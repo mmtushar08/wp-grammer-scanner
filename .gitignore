@@ -1,0 +1,14 @@
+# Node / React build files
+node_modules
+admin-app/node_modules
+admin-app/build
+
+# Logs
+*.log
+
+# System files
+.DS_Store
+Thumbs.db
+
+# WordPress uploads
+wp-content/uploads
