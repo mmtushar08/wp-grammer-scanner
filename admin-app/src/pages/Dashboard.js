@@ -1,128 +1,193 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
 
 const Dashboard = () => {
-    const [loading, setLoading] = useState(false);
-    const [reportMeta, setReportMeta] = useState(null);
-    const [rows, setRows] = useState([]);
-    const [error, setError] = useState(null);
+  const [reports, setReports] = useState([]);
+  const [loadingScan, setLoadingScan] = useState(false);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [error, setError] = useState("");
 
-    const apiRoot = window.wpGsApi?.root || '/wp-json/';       // we’ll localize this from PHP
-    const nonce = window.wpGsApi?.nonce || '';
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
-    const axiosInstance = axios.create({
-        baseURL: apiRoot,
-        headers: nonce ? { 'X-WP-Nonce': nonce } : {},
-    });
+  const restBase =
+    (window.WP_GS_DATA && window.WP_GS_DATA.restUrl) || "/wp-json/wp-gs/v1/";
+  const nonce = window.WP_GS_DATA ? window.WP_GS_DATA.nonce : "";
 
-    const scanNow = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const res = await axiosInstance.post('wp-grammar-scanner/v1/scan');
-            alert(res.data.message || 'Scan completed.');
-            await fetchReport();
-        } catch (err) {
-            console.error(err);
-            setError('Error running scan.');
-        }
-        setLoading(false);
-    };
+  const fetchReports = async () => {
+    setLoadingReports(true);
+    setError("");
 
-    const fetchReport = async () => {
-        setError(null);
-        try {
-            const res = await axiosInstance.get('wp-grammar-scanner/v1/report');
-            if (!res.data.has_report) {
-                setReportMeta(null);
-                setRows([]);
-                return;
-            }
-            setReportMeta(res.data.report);
-            setRows(res.data.rows || []);
-        } catch (err) {
-            console.error(err);
-            setError('Error loading data.');
-        }
-    };
+    try {
+      const res = await fetch(restBase + "reports", {
+        credentials: "same-origin",
+        headers: {
+          "X-WP-Nonce": nonce,
+        },
+      });
 
-    useEffect(() => {
-        fetchReport();
-    }, []);
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
 
-    return (
-        <div className="wpgs-dashboard">
-            <h1>WP Grammar Scanner Dashboard</h1>
+      const data = await res.json();
 
-            <button onClick={scanNow} disabled={loading}>
-                {loading ? 'Scanning...' : 'Scan Now'}
-            </button>
+      // API returns array of reports
+      setReports(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.error("Error fetching reports", e);
+      setError("Error loading reports.");
+    } finally {
+      setLoadingReports(false);
+    }
+  };
 
-            {error && <p style={{ color: 'red' }}>{error}</p>}
+  const runScan = async () => {
+    setLoadingScan(true);
+    setError("");
 
-            {reportMeta && (
-                <div style={{ marginTop: '20px' }}>
-                    <h2>Last Scan Summary</h2>
-                    <p>
-                        <strong>Status:</strong> {reportMeta.status}<br />
-                        <strong>Total posts:</strong> {reportMeta.total_posts}<br />
-                        <strong>Total issues:</strong> {reportMeta.total_issues}<br />
-                        <strong>Created:</strong> {reportMeta.created_at}
-                    </p>
+    try {
+      const res = await fetch(restBase + "scan", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: {
+          "Content-Type": "application/json",
+          "X-WP-Nonce": nonce,
+        },
+        body: JSON.stringify({}),
+      });
 
-                    {reportMeta.csv_url && (
-                        <p>
-                            <a href={reportMeta.csv_url} className="button button-primary" download>
-                                Download Full CSV
-                            </a>
-                        </p>
-                    )}
-                </div>
-            )}
+      const data = await res.json();
 
-            {rows && rows.length > 0 && (
-                <div style={{ marginTop: '20px' }}>
-                    <h2>Issues Preview (first {rows.length})</h2>
-                    <table className="widefat striped">
-                        <thead>
-                            <tr>
-                                <th>Post ID</th>
-                                <th>Title</th>
-                                <th>Message</th>
-                                <th>Rule</th>
-                                <th>Sentence</th>
-                                <th>Suggestions</th>
-                                <th>View</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {rows.map((row, index) => (
-                                <tr key={index}>
-                                    <td>{row['Post ID']}</td>
-                                    <td>{row['Title']}</td>
-                                    <td>{row['Message']}</td>
-                                    <td>{row['Rule']}</td>
-                                    <td>{row['Sentence']}</td>
-                                    <td>{row['Suggestions']}</td>
-                                    <td>
-                                        {row['URL'] && (
-                                            <a href={row['URL']} target="_blank" rel="noreferrer">
-                                                View Post
-                                            </a>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+      if (!res.ok || !data.success) {
+        console.error("Scan failed", data);
+        setError("Scan failed. Check debug.log for details.");
+      } else {
+        alert(
+          `Scan completed. Issues found: ${data.issues_count ?? data.issues?.length ?? 0
+          }`
+        );
+        fetchReports();
+      }
+    } catch (e) {
+      console.error("Error running scan", e);
+      setError("Scan failed. Check debug.log for details.");
+    } finally {
+      setLoadingScan(false);
+    }
+  };
 
-            {!reportMeta && !error && (
-                <p>No reports yet. Click “Scan Now” to generate your first report.</p>
-            )}
+  // client-side date filter
+  const filteredReports = reports.filter((r) => {
+    if (!fromDate && !toDate) return true;
+    if (!r.created_at) return true; // if date missing, don't hide it
+
+    const d = new Date(r.created_at); // make sure created_at is in REST response
+
+    if (fromDate && d < new Date(fromDate)) return false;
+    if (toDate && d > new Date(toDate)) return false;
+    return true;
+  });
+
+  useEffect(() => {
+    fetchReports();
+  }, []);
+
+  return (
+    <div className="wrap">
+      <h1>WP Grammar Scanner</h1>
+
+      {error && (
+        <div className="notice notice-error">
+          <p>{error}</p>
         </div>
-    );
+      )}
+
+      <p>
+        <button
+          className="button button-primary"
+          onClick={runScan}
+          disabled={loadingScan}
+        >
+          {loadingScan ? "Scanning..." : "Scan Now"}
+        </button>
+      </p>
+
+      <h2>Scan Reports</h2>
+
+      {/* Filter UI */}
+      <div style={{ marginBottom: "15px" }}>
+        <label style={{ marginRight: "10px" }}>
+          From:{" "}
+          <input
+            type="date"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+        </label>
+
+        <label style={{ marginRight: "10px" }}>
+          To:{" "}
+          <input
+            type="date"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
+        </label>
+
+        <button
+          className="button"
+          onClick={() => {
+            setFromDate("");
+            setToDate("");
+          }}
+        >
+          Clear filters
+        </button>
+      </div>
+
+      {loadingReports ? (
+        <p>Loading reports…</p>
+      ) : filteredReports.length === 0 ? (
+        <p>No reports found.</p>
+      ) : (
+        <table className="widefat fixed striped">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Created At</th>
+              <th>Total Posts</th>
+              <th>Total Issues</th>
+              <th>Download</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredReports.map((r) => (
+              <tr key={r.id}>
+                <td>{r.id}</td>
+                <td>{r.created_at}</td>
+                <td>{r.total_posts}</td>
+                <td>{r.total_issues}</td>
+                <td>
+                  {r.csv_url ? (
+                    <a
+                      href={r.csv_url}
+                      className="button button-secondary"
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Download CSV
+                    </a>
+                  ) : (
+                    <span>No file</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
 };
 
 export default Dashboard;
