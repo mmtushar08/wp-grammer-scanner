@@ -1,5 +1,4 @@
-﻿<?php
-
+<?php
 if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Make sure scanner is loaded
