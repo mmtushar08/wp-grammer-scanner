@@ -1,0 +1,65 @@
+.wpgs-app {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+}
+
+.wpgs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+    .wpgs-header h1 {
+        margin: 0;
+    }
+
+.wpgs-sidebar {
+    width: 200px;
+    float: left;
+}
+
+    .wpgs-sidebar ul {
+        list-style: none;
+        padding: 0;
+    }
+
+    .wpgs-sidebar button {
+        display: block;
+        width: 100%;
+        margin-bottom: 5px;
+        padding: 10px;
+        cursor: pointer;
+    }
+
+.wpgs-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+    .wpgs-table th, .wpgs-table td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: left;
+    }
+
+.wpgs-loader {
+    font-size: 16px;
+    padding: 20px;
+}
+
+.wpgs-form-group {
+    margin-bottom: 15px;
+}
+
+    .wpgs-form-group label {
+        display: block;
+        margin-bottom: 5px;
+    }
+
+    .wpgs-form-group input,
+    .wpgs-form-group select {
+        width: 100%;
+        padding: 8px;
+        box-sizing: border-box;
+    }
