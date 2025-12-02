@@ -1,7 +1,7 @@
 # WP Grammar Scanner
 
 **Version:** 1.0  
-**Author:** Your Name  
+**Author:** Tushar
 **License:** GPL2  
 
 ## Description
@@ -26,3 +26,4 @@ It provides suggestions in the admin dashboard and allows you to schedule scans 
 ## Changelog
 ### 1.0
 - Initial release
+
